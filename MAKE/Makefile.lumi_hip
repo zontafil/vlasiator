@@ -62,7 +62,7 @@ USE_CUDA=1
 CUDABLOCKS=108
 CMP = CC
 LNK = CC
-NVCC = hipcc
+NVCC = CC
 CC = cc
 CXX = CC
 
@@ -70,19 +70,16 @@ CC_BRAND = clang
 CC_BRAND_VERSION = 14.0.2
 
 #CXXFLAGS += -g -O2 -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1 -gpu=cc80 -Minfo=accel -acc -fopenmp -std=c++11
-CXXFLAGS += -g -O2 -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1 -std=c++11
-NVCCFLAGS += -g -O2 --offload-arch=gfx90a -std=c++11
+CXXFLAGS += -g -O2 -fopenmp -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1 -std=c++11 --offload-arch=gfx90a -x hip
+NVCCFLAGS += -g -O2 -fopenmp --offload-arch=gfx90a -std=c++11 -x hip
 
 #testpackage: CXXFLAGS = -g -O2 -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1 -gpu=cc80 -Minfo=accel -acc -fopenmp -std=c++11
 testpackage: CXXFLAGS = -g -O2 -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1 -fopenmp -std=c++11
 testpackage: NVCCFLAGS = -g -O2 --offload-arch=gfx90a -std=c++11 --prec-sqrt=true --prec-div=true --ftz=false --fmad=false --generate-line-info
 
-###MATHFLAGS =
-###LDFLAGS = -O2 -g -L/appl/spack/v016/install-tree/gcc-4.8.5/nvhpc-21.2-l6xyb4/Linux_x86_64/21.2/cuda/11.2/lib64 -lnvToolsExt
-#LDFLAGS = -ta=tesla:lineinfo,keepbin,keepgpu,keepptx
-###LIB_MPI = -lgomp
-#LIB_CUDA = -L/usr/local/cuda/lib64 -lcuda -lcudart
-
+MATHFLAGS = 
+LDFLAGS = -O2 -g -L${ROCM_PATH}/lib -lrt -fopenmp -lm
+LIB_CUDA = -lamdhip64
 
 #======== PAPI ==========
 #Add PAPI_MEM define to use papi to report memory consumption?
@@ -112,8 +109,8 @@ INC_PAPI = -L/$(LIBRARY_PREFIX2)/papi/lib
 INC_ZOLTAN = -I/$(LIBRARY_PREFIX2)/zoltan/include
 LIB_ZOLTAN = -L/$(LIBRARY_PREFIX2)/zoltan/lib -lzoltan
 
-INC_JEMALLOC = -I/$(LIBRARY_PREFIX2)/jemalloc/include
-LIB_JEMALLOC = -L/$(LIBRARY_PREFIX2)/jemalloc/lib -ljemalloc -Wl,-rpath=$(LIBRARY_PREFIX2)/jemalloc/lib
+#INC_JEMALLOC = -I/$(LIBRARY_PREFIX2)/jemalloc/include
+#LIB_JEMALLOC = -L/$(LIBRARY_PREFIX2)/jemalloc/lib -ljemalloc -Wl,-rpath=$(LIBRARY_PREFIX2)/jemalloc/lib
 
 INC_VLSV = -I$(LIBRARY_PREFIX2)/vlsv
 LIB_VLSV = -L$(LIBRARY_PREFIX2)/vlsv -lvlsv -Wl,-rpath=$(LIBRARY_PREFIX2)/vlsv/lib

@@ -27,6 +27,7 @@
 #include <array>
 #include <memory>
 
+#include <functional>
 #include "datareductionoperator.h"
 #include "../object_wrapper.h"
 #include "../arch/arch_device_api.h"
@@ -534,7 +535,7 @@ namespace DRO {
    bool MaxDistributionFunction::reduceDiagnostic(const SpatialCell* cell,Real* buffer) {
       maxF = std::numeric_limits<Real>::min();
       
-      #pragma omp parallel 
+    //  #pragma omp parallel 
       {
          Real threadMax = std::numeric_limits<Real>::min();
          
@@ -545,7 +546,7 @@ namespace DRO {
              lthreadMax[0] = max((Real)(block_data[n * SIZE_VELBLOCK + cellIndex(i,j,k)]), lthreadMax[0]);
          }, threadMax);
 
-         #pragma omp critical
+      //   #pragma omp critical
          {
             maxF = max(threadMax, maxF);
          }
@@ -586,7 +587,7 @@ namespace DRO {
    bool MinDistributionFunction::reduceDiagnostic(const SpatialCell* cell,Real* buffer) {
       minF =  std::numeric_limits<Real>::max();
 
-      #pragma omp parallel 
+     // #pragma omp parallel 
       {
          Real threadMin = std::numeric_limits<Real>::max();
          
@@ -597,7 +598,7 @@ namespace DRO {
              lthreadMin[0] = min((Real)(block_data[n * SIZE_VELBLOCK + cellIndex(i,j,k)]), lthreadMin[0]);
          }, threadMin);
          
-         #pragma omp critical
+       //  #pragma omp critical
          {
             minF = min(threadMin, minF);
          }
@@ -1429,7 +1430,7 @@ namespace DRO {
              const Real VdotB_norm = (B[0]*VX + B[1]*VY + B[2]*VZ)/normV;
              Real countAndGate = floor(VdotB_norm/cosAngle);  // gate function: 0 outside loss cone, 1 inside
              countAndGate = max(0.,countAndGate);
-             const Real energy = 0.5 * getObjectWrapper().particleSpecies[popID].mass * normV*normV; // in SI
+const Real energy = 1;//0.5 * getObjectWrapper().particleSpecies[popID].mass * normV*normV; // in SI
              
              // Find the correct energy bin number to update
              int binNumber = round((log(energy) - log(emin)) / log(emax/emin) * (nChannels-1));
@@ -1540,7 +1541,7 @@ namespace DRO {
                    =          parameters[n * BlockParams::N_VELOCITY_BLOCK_PARAMS + BlockParams::VZCRD] 
                    + (k + HALF)*parameters[n * BlockParams::N_VELOCITY_BLOCK_PARAMS + BlockParams::DVZ];
                      
-               const Real ENERGY = (VX*VX + VY*VY + VZ*VZ) * HALF * getObjectWrapper().particleSpecies[popID].mass;
+const Real ENERGY = 1;//(VX*VX + VY*VY + VZ*VZ) * HALF * getObjectWrapper().particleSpecies[popID].mass;
                lsum[0] += block_data[n * SIZE_VELBLOCK+cellIndex(i,j,k)] * ENERGY * DV3;
                if (ENERGY > E1limit) lsum[1] += block_data[n * SIZE_VELBLOCK+cellIndex(i,j,k)] * ENERGY * DV3;
                if (ENERGY > E2limit) lsum[2] += block_data[n * SIZE_VELBLOCK+cellIndex(i,j,k)] * ENERGY * DV3;

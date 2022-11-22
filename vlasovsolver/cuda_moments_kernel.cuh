@@ -19,8 +19,8 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-#ifndef CUDA_MOMENTS_KERNELH
-#define CUDA_MOMENTS_H
+#ifndef CUDA_MOMENTS_KERNEL_H
+#define CUDA_MOMENTS_KERNEL_H
 
 #include "../common.h"
 #include "device_launch_parameters.h"
@@ -45,7 +45,7 @@ extern void cuda_allocateMomentCalculations(
    const uint maxThreads
    );
 
-inline __host__ __device__ Real divideIfNonZero(
+inline __host__ __device__ Real divideIfNonZeroGPU(
    Real numerator,
    Real denominator
 ) {

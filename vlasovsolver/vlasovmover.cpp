@@ -393,10 +393,10 @@ void calculateAcceleration(const uint popID,const uint globalMaxSubcycles,const 
 
    // Semi-Lagrangian acceleration for those cells which are subcycled,
    // dimension-by-dimension
-   #pragma omp parallel
+ //  #pragma omp parallel
    {
       // Start parallel acceleration region.
-      #pragma omp for schedule(dynamic,1)
+   //   #pragma omp for schedule(dynamic,1)
       for (size_t c=0; c<propagatedCells.size(); ++c) {
          const CellID cellID = propagatedCells[c];
          const Real maxVdt = mpiGrid[cellID]->get_max_v_dt(popID);
@@ -543,7 +543,7 @@ momentCalculation:
 #endif
 
    // Set CellParams::MAXVDT to be the minimum dt of all per-species values
-   #pragma omp parallel for
+ //  #pragma omp parallel for
    for (size_t c=0; c<cells.size(); ++c) {
       SpatialCell* cell = mpiGrid[cells[c]];
       cell->parameters[CellParams::MAXVDT] = numeric_limits<Real>::max();
