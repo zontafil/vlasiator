@@ -161,22 +161,22 @@ __host__ void cuda_register_BlockData(
    Realf* blockData,
    uint blockCount
    ) {
-   hipHostRegister(blockData, blockCount*WID3*sizeof(Realf),hipHostRegisterDefault);
+   //hipHostRegister(blockData, blockCount*WID3*sizeof(Realf),hipHostRegisterDefault);
 }
 __host__ void cuda_register_BlockParameters(
    Real* parameters,
    uint blockCount
    ) {
-   hipHostRegister(parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf),hipHostRegisterDefault);
+   //hipHostRegister(parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf),hipHostRegisterDefault);
 }
 
 __host__ void cuda_unregister_BlockData(
    Realf* blockData
    ) {
-   hipHostUnregister(blockData);
+   //hipHostUnregister(blockData);
 }
 __host__ void cuda_unregister_BlockParameters(
    Real* parameters
    ) {
-   hipHostUnregister(parameters);
+   //hipHostUnregister(parameters);
 }

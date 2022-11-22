@@ -428,6 +428,7 @@ namespace DRO {
          }
       }
       printf("Diag! PTensor[0]: %e, PTensor[1]: %e, PTensor[2]: %e\n",PTensor[0],PTensor[1],PTensor[2]);
+      fflush(stdout); // Will now print everything in the stdout buffer
       const char* ptr = reinterpret_cast<const char*>(&PTensor);
       for (uint i = 0; i < 3*sizeof(Real); ++i) buffer[i] = ptr[i];
       return true;
@@ -504,6 +505,7 @@ namespace DRO {
          }
       }
       printf("OffDiag! PTensor[0]: %e, PTensor[1]: %e, PTensor[2]: %e\n",PTensor[0],PTensor[1],PTensor[2]);
+      fflush(stdout); // Will now print everything in the stdout buffer
       const char* ptr = reinterpret_cast<const char*>(&PTensor);
       for (uint i = 0; i < 3*sizeof(Real); ++i) buffer[i] = ptr[i];
       return true;
