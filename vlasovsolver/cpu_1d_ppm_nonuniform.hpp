@@ -29,10 +29,10 @@
 #include "cmath"
 
 #include "cuda_header.h"
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 #endif
 #include "cpu_slope_limiters.hpp"
 #include "cpu_face_estimates.hpp"

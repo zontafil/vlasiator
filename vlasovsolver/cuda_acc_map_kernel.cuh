@@ -1,8 +1,8 @@
 #include "vec.h"
 #include "../common.h"
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 
 struct Column
 {
@@ -31,7 +31,7 @@ extern void acceleration_1_glue(
    const int bdsw3,
    const int cudablocks,
    const int cudathreads,
-   cudaStream_t stream
+   hipStream_t stream
 );
 
 extern void reorder_blocks_by_dimension_glue(
@@ -44,7 +44,7 @@ extern void reorder_blocks_by_dimension_glue(
    uint* dev_columnBlockOffsets,
    const int cudablocks, 
    const int cudathreads,
-   cudaStream_t stream);
+   hipStream_t stream);
 
 extern void cuda_acc_allocate (
    uint maxBlockCount

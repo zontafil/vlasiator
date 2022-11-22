@@ -34,8 +34,8 @@
 #include "cuda_acc_map.hpp"
 
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 
 #include "../cuda_context.cuh"
 
@@ -83,8 +83,8 @@ void cuda_accelerate_cell(SpatialCell* spatial_cell,
    //blockContainer.dev_pinBlocks();
    blockContainer.dev_syncBlocksToDevice();
    const uint thread_id = omp_get_thread_num();
-   //cudaStream_t cudaThreadStream;
-   //cudaStreamCreate(&cudaThreadStream);
+   //hipStream_t cudaThreadStream;
+   //hipStreamCreate(&cudaThreadStream);
    //cuda_acc_copy_HtoD(spatial_cell, popID, cudaStreamList[thread_id]);
    phiprof::stop("CUDA-HtoD");
 
@@ -176,8 +176,8 @@ void cuda_accelerate_cell(SpatialCell* spatial_cell,
    //blockContainer.dev_unpin();
    blockContainer.dev_syncBlocksToHost();
    //cuda_acc_copy_DtoH(spatial_cell, popID, cudaStreamList[thread_id]);
-   //cudaStreamDestroy(cudaThreadStream);
-   cudaStreamSynchronize(cudaStreamList[thread_id]);
+   //hipStreamDestroy(cudaThreadStream);
+   hipStreamSynchronize(cudaStreamList[thread_id]);
    //blockContainer.dev_unpin();
    phiprof::stop("CUDA-DtoH");
 

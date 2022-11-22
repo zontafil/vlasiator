@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * This file is part of Vlasiator.
  * Copyright 2010-2022 Finnish Meteorological Institute
@@ -30,8 +31,8 @@
 #include "cpu_1d_plm.hpp"
 
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -100,25 +101,25 @@ __host__ void cuda_acc_allocate_memory (
    cuda_acc_allocatedSize = blockAllocationCount;
    cuda_acc_allocatedColumns = maxColumnsPerCell;
 
-   HANDLE_ERROR( cudaMalloc((void**)&dev_cell_indices_to_id[cpuThreadID], 3*sizeof(uint)) );
-   HANDLE_ERROR( cudaMalloc((void**)&dev_columns[cpuThreadID], maxColumnsPerCell*sizeof(Column)) );
-   HANDLE_ERROR( cudaMalloc((void**)&dev_columnNumBlocks[cpuThreadID], maxColumnsPerCell*sizeof(uint)) );
-   HANDLE_ERROR( cudaMalloc((void**)&dev_columnBlockOffsets[cpuThreadID], maxColumnsPerCell*sizeof(uint)) );
-   HANDLE_ERROR( cudaMalloc((void**)&dev_blockDataOrdered[cpuThreadID], blockAllocationCount * (WID3 / VECL) * sizeof(Vec)) );
-   HANDLE_ERROR( cudaMalloc((void**)&dev_LIDlist[cpuThreadID], blockAllocationCount*sizeof(vmesh::LocalID)) );
+   HANDLE_ERROR( hipMalloc((void**)&dev_cell_indices_to_id[cpuThreadID], 3*sizeof(uint)) );
+   HANDLE_ERROR( hipMalloc((void**)&dev_columns[cpuThreadID], maxColumnsPerCell*sizeof(Column)) );
+   HANDLE_ERROR( hipMalloc((void**)&dev_columnNumBlocks[cpuThreadID], maxColumnsPerCell*sizeof(uint)) );
+   HANDLE_ERROR( hipMalloc((void**)&dev_columnBlockOffsets[cpuThreadID], maxColumnsPerCell*sizeof(uint)) );
+   HANDLE_ERROR( hipMalloc((void**)&dev_blockDataOrdered[cpuThreadID], blockAllocationCount * (WID3 / VECL) * sizeof(Vec)) );
+   HANDLE_ERROR( hipMalloc((void**)&dev_LIDlist[cpuThreadID], blockAllocationCount*sizeof(vmesh::LocalID)) );
 
    // Old version without checked max block count (uses too much memory to be feasible)
    // const uint maxColumnsPerCell = ( MAX_BLOCKS_PER_DIM / 2 + 1) * MAX_BLOCKS_PER_DIM * MAX_BLOCKS_PER_DIM;
    // const uint maxTargetBlocksPerColumn = 3 * ( MAX_BLOCKS_PER_DIM / 2 + 1);
    // const uint maxTargetBlocksPerCell = maxTargetBlocksPerColumn * MAX_BLOCKS_PER_DIM * MAX_BLOCKS_PER_DIM;
    // const uint maxSourceBlocksPerCell = MAX_BLOCKS_PER_DIM * MAX_BLOCKS_PER_DIM * MAX_BLOCKS_PER_DIM;
-   //HANDLE_ERROR( cudaMalloc((void**)&dev_blockData[cpuThreadID], blockAllocationCount * WID3 * sizeof(Realf) ) );
-   //HANDLE_ERROR( cudaMalloc((void**)&dev_GIDlist[cpuThreadID], blockAllocationCount*sizeof(vmesh::GlobalID)) );
+   //HANDLE_ERROR( hipMalloc((void**)&dev_blockData[cpuThreadID], blockAllocationCount * WID3 * sizeof(Realf) ) );
+   //HANDLE_ERROR( hipMalloc((void**)&dev_GIDlist[cpuThreadID], blockAllocationCount*sizeof(vmesh::GlobalID)) );
 
    // Also allocate and pin memory on host for faster transfers
-   HANDLE_ERROR( cudaHostAlloc((void**)&host_columns[cpuThreadID], maxColumnsPerCell*sizeof(Column), cudaHostAllocPortable) );
-   HANDLE_ERROR( cudaHostAlloc((void**)&host_GIDlist[cpuThreadID], blockAllocationCount*sizeof(vmesh::LocalID), cudaHostAllocPortable) );
-   HANDLE_ERROR( cudaHostAlloc((void**)&host_LIDlist[cpuThreadID], blockAllocationCount*sizeof(vmesh::LocalID), cudaHostAllocPortable) );
+   HANDLE_ERROR( hipHostAlloc((void**)&host_columns[cpuThreadID], maxColumnsPerCell*sizeof(Column), hipHostMallocPortable) );
+   HANDLE_ERROR( hipHostAlloc((void**)&host_GIDlist[cpuThreadID], blockAllocationCount*sizeof(vmesh::LocalID), hipHostMallocPortable) );
+   HANDLE_ERROR( hipHostAlloc((void**)&host_LIDlist[cpuThreadID], blockAllocationCount*sizeof(vmesh::LocalID), hipHostMallocPortable) );
    // Blockdata is pinned inside cuda_acc_map_1d() in cuda_acc_map.cu
    // printf("AA addrD %d -- %lu %lu %lu %lu\n",cpuThreadID,dev_cell_indices_to_id[cpuThreadID],dev_columns[cpuThreadID],dev_blockData[cpuThreadID],dev_blockDataOrdered[cpuThreadID]);
    // printf("AA addrH %d -- %lu %lu %lu %lu\n",cpuThreadID,&dev_cell_indices_to_id[cpuThreadID],&dev_columns[cpuThreadID],&dev_blockData[cpuThreadID],&dev_blockDataOrdered[cpuThreadID]);
@@ -129,19 +130,19 @@ __host__ void cuda_acc_deallocate_memory (
    ) {
    // printf("DD addrD %d -- %lu %lu %lu %lu\n",cpuThreadID,dev_cell_indices_to_id[cpuThreadID],dev_columns[cpuThreadID],dev_blockData[cpuThreadID],dev_blockDataOrdered[cpuThreadID]);
    // printf("DD addrH %d -- %lu %lu %lu %lu\n",cpuThreadID,&dev_cell_indices_to_id[cpuThreadID],&dev_columns[cpuThreadID],&dev_blockData[cpuThreadID],&dev_blockDataOrdered[cpuThreadID]);
-   HANDLE_ERROR( cudaFree(dev_cell_indices_to_id[cpuThreadID]) );
-   HANDLE_ERROR( cudaFree(dev_columns[cpuThreadID]) );
-   // HANDLE_ERROR( cudaFree(dev_blockData[cpuThreadID]) );
-   HANDLE_ERROR( cudaFree(dev_blockDataOrdered[cpuThreadID]) );
-   //HANDLE_ERROR( cudaFree(dev_GIDlist[cpuThreadID]) );
-   HANDLE_ERROR( cudaFree(dev_LIDlist[cpuThreadID]) );
-   HANDLE_ERROR( cudaFree(dev_columnNumBlocks[cpuThreadID]) );
-   HANDLE_ERROR( cudaFree(dev_columnBlockOffsets[cpuThreadID]) );
+   HANDLE_ERROR( hipFree(dev_cell_indices_to_id[cpuThreadID]) );
+   HANDLE_ERROR( hipFree(dev_columns[cpuThreadID]) );
+   // HANDLE_ERROR( hipFree(dev_blockData[cpuThreadID]) );
+   HANDLE_ERROR( hipFree(dev_blockDataOrdered[cpuThreadID]) );
+   //HANDLE_ERROR( hipFree(dev_GIDlist[cpuThreadID]) );
+   HANDLE_ERROR( hipFree(dev_LIDlist[cpuThreadID]) );
+   HANDLE_ERROR( hipFree(dev_columnNumBlocks[cpuThreadID]) );
+   HANDLE_ERROR( hipFree(dev_columnBlockOffsets[cpuThreadID]) );
 
    // Also de-allocate and unpin memory on host
-   HANDLE_ERROR( cudaFreeHost(host_columns[cpuThreadID]) );
-   HANDLE_ERROR( cudaFreeHost(host_GIDlist[cpuThreadID]) );
-   HANDLE_ERROR( cudaFreeHost(host_LIDlist[cpuThreadID]) );
+   HANDLE_ERROR( hipHostFree(host_columns[cpuThreadID]) );
+   HANDLE_ERROR( hipHostFree(host_GIDlist[cpuThreadID]) );
+   HANDLE_ERROR( hipHostFree(host_LIDlist[cpuThreadID]) );
    cuda_acc_allocatedSize = 0;
    cuda_acc_allocatedColumns = 0;
 }
@@ -360,11 +361,11 @@ void acceleration_1_glue(
    const int bdsw3,
    const int cudablocks,
    const int cudathreads,
-   cudaStream_t stream
+   hipStream_t stream
 ) {
    // NVIDIA: a100 64 stream multiprocessors? Blocks should be larger than this value.
    // Launch acceleration kernels
-   acceleration_kernel<<<cudablocks, cudathreads, 0, stream>>> (
+   hipLaunchKernelGGL(acceleration_kernel, cudablocks, cudathreads, 0, stream, 
       dev_blockData,
       dev_blockDataOrdered,
       dev_cell_indices_to_id,
@@ -393,9 +394,9 @@ void reorder_blocks_by_dimension_glue(
    uint* dev_columnBlockOffsets,
    const int cudablocks,
    const int cudathreads,
-   cudaStream_t stream
+   hipStream_t stream
 ) {
-   reorder_blocks_by_dimension_kernel<<<cudablocks, cudathreads, 0, stream>>> (
+   hipLaunchKernelGGL(reorder_blocks_by_dimension_kernel, cudablocks, cudathreads, 0, stream, 
       dev_blockData,
       dev_blockDataOrdered,
       dev_cell_indices_to_id,

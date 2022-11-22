@@ -24,8 +24,8 @@
 
 #include "../common.h"
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 
 #define nMoments1 (5)
 #define nMoments2 (3)
@@ -60,7 +60,7 @@ void calculate_firstMoments_glue(
    MomentInfo *dev_momentInfos,
    Real* dev_momentArrays1,
    const int nPopulations,
-   cudaStream_t stream
+   hipStream_t stream
    );
 
 void calculate_secondMoments_glue(
@@ -70,7 +70,7 @@ void calculate_secondMoments_glue(
    const Real bulkVX,
    const Real bulkVY,
    const Real bulkVZ,
-   cudaStream_t stream
+   hipStream_t stream
    );
 
 extern MomentInfo *dev_momentInfos[];

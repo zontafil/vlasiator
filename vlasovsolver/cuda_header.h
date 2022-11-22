@@ -21,13 +21,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 #define CUDA_HOSTDEV __host__ __device__
 #else
 #define CUDA_HOSTDEV
 #endif
 
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 #define CUDA_DEV __device__
 #else
 #define CUDA_DEV

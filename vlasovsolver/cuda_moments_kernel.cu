@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * This file is part of Vlasiator.
  * Copyright 2010-2016 Finnish Meteorological Institute
@@ -25,8 +26,8 @@
 #include "../common.h"
 
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 
 using namespace std;
 
@@ -47,15 +48,15 @@ __host__ void cuda_allocateMomentCalculations(
    if (isCudaMomentsAllocated) return;
    for (uint cpuThreadID=0; cpuThreadID<maxThreads; ++cpuThreadID) {
 
-      //cudaMalloc
-      HANDLE_ERROR( cudaMalloc((void**)&dev_momentInfos[cpuThreadID], nPopulations*sizeof(MomentInfo)) );
-      HANDLE_ERROR( cudaMalloc((void**)&dev_momentArrays1[cpuThreadID], CUDABLOCKS*nMoments1*(nPopulations+1)*sizeof(Real)) );
-      HANDLE_ERROR( cudaMalloc((void**)&dev_momentArrays2[cpuThreadID], CUDABLOCKS*nMoments2*(nPopulations+1)*sizeof(Real)) );
+      //hipMalloc
+      HANDLE_ERROR( hipMalloc((void**)&dev_momentInfos[cpuThreadID], nPopulations*sizeof(MomentInfo)) );
+      HANDLE_ERROR( hipMalloc((void**)&dev_momentArrays1[cpuThreadID], CUDABLOCKS*nMoments1*(nPopulations+1)*sizeof(Real)) );
+      HANDLE_ERROR( hipMalloc((void**)&dev_momentArrays2[cpuThreadID], CUDABLOCKS*nMoments2*(nPopulations+1)*sizeof(Real)) );
 
       // Also allocate and pin memory on host for faster transfers
-      HANDLE_ERROR( cudaHostAlloc((void**)&host_momentInfos[cpuThreadID], nPopulations*sizeof(MomentInfo), cudaHostAllocPortable) );
-      HANDLE_ERROR( cudaHostAlloc((void**)&host_momentArrays1[cpuThreadID], CUDABLOCKS*nMoments1*(nPopulations+1)*sizeof(Real), cudaHostAllocPortable) );
-      HANDLE_ERROR( cudaHostAlloc((void**)&host_momentArrays2[cpuThreadID], CUDABLOCKS*nMoments2*(nPopulations+1)*sizeof(Real), cudaHostAllocPortable) );
+      HANDLE_ERROR( hipHostAlloc((void**)&host_momentInfos[cpuThreadID], nPopulations*sizeof(MomentInfo), hipHostMallocPortable) );
+      HANDLE_ERROR( hipHostAlloc((void**)&host_momentArrays1[cpuThreadID], CUDABLOCKS*nMoments1*(nPopulations+1)*sizeof(Real), hipHostMallocPortable) );
+      HANDLE_ERROR( hipHostAlloc((void**)&host_momentArrays2[cpuThreadID], CUDABLOCKS*nMoments2*(nPopulations+1)*sizeof(Real), hipHostMallocPortable) );
    }
    isCudaMomentsAllocated = true;
    return;
@@ -226,7 +227,7 @@ void calculate_firstMoments_glue(
    MomentInfo *dev_momentInfos,
    Real* dev_momentArrays1,
    const int nPopulations,
-   cudaStream_t stream
+   hipStream_t stream
    ) {
    dim3 block(WID,WID,WID);
    moments_first_kernel<<<CUDABLOCKS, block, 4*WID3*sizeof(Real), stream>>> (
@@ -242,7 +243,7 @@ void calculate_secondMoments_glue(
    const Real bulkVX,
    const Real bulkVY,
    const Real bulkVZ,
-   cudaStream_t stream
+   hipStream_t stream
    ) {
    dim3 block(WID,WID,WID);
    moments_second_kernel<<<CUDABLOCKS, block, 3*WID3*sizeof(Real), stream>>> (

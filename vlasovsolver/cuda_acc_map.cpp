@@ -114,7 +114,7 @@ __host__ bool cuda_acc_map_1d(spatial_cell::SpatialCell* spatial_cell,
                               Realv intersection_dj,
                               Realv intersection_dk,
                               const uint dimension,
-                              cudaStream_t stream
+                              hipStream_t stream
    ) {
 
    //nothing to do if no blocks
@@ -198,7 +198,7 @@ __host__ bool cuda_acc_map_1d(spatial_cell::SpatialCell* spatial_cell,
       break;
    }
    // Copy indexing information to device (async)
-   HANDLE_ERROR( cudaMemcpyAsync(dev_cell_indices_to_id[cuda_async_queue_id], cell_indices_to_id, 3*sizeof(uint), cudaMemcpyHostToDevice, stream) );
+   HANDLE_ERROR( hipMemcpyAsync(dev_cell_indices_to_id[cuda_async_queue_id], cell_indices_to_id, 3*sizeof(uint), hipMemcpyHostToDevice, stream) );
 
    const Realv i_dv=1.0/dv;
 
@@ -237,10 +237,10 @@ __host__ bool cuda_acc_map_1d(spatial_cell::SpatialCell* spatial_cell,
    uint cudablocks = totalColumns;
 
    // memcopy LIDlist to device (GIDlist isn't needed here)
-   //cudaMemcpyAsync(dev_GIDlist[cuda_async_queue_id], GIDlist, blockDataN*sizeof(vmesh::GlobalID), cudaMemcpyHostToDevice, stream);
-   HANDLE_ERROR( cudaMemcpyAsync(dev_LIDlist[cuda_async_queue_id], LIDlist, blockDataN*sizeof(vmesh::LocalID), cudaMemcpyHostToDevice, stream) );
-   HANDLE_ERROR( cudaMemcpyAsync(dev_columnNumBlocks[cuda_async_queue_id], columnNumBlocks.data(), totalColumns*sizeof(uint), cudaMemcpyHostToDevice, stream) );
-   HANDLE_ERROR( cudaMemcpyAsync(dev_columnBlockOffsets[cuda_async_queue_id], columnBlockOffsets.data(), totalColumns*sizeof(uint), cudaMemcpyHostToDevice, stream) );
+   //hipMemcpyAsync(dev_GIDlist[cuda_async_queue_id], GIDlist, blockDataN*sizeof(vmesh::GlobalID), hipMemcpyHostToDevice, stream);
+   HANDLE_ERROR( hipMemcpyAsync(dev_LIDlist[cuda_async_queue_id], LIDlist, blockDataN*sizeof(vmesh::LocalID), hipMemcpyHostToDevice, stream) );
+   HANDLE_ERROR( hipMemcpyAsync(dev_columnNumBlocks[cuda_async_queue_id], columnNumBlocks.data(), totalColumns*sizeof(uint), hipMemcpyHostToDevice, stream) );
+   HANDLE_ERROR( hipMemcpyAsync(dev_columnBlockOffsets[cuda_async_queue_id], columnBlockOffsets.data(), totalColumns*sizeof(uint), hipMemcpyHostToDevice, stream) );
 
    // Launch kernels for transposing and ordering velocity space data into columns
    reorder_blocks_by_dimension_glue(
@@ -255,7 +255,7 @@ __host__ bool cuda_acc_map_1d(spatial_cell::SpatialCell* spatial_cell,
       cudathreads,
       stream);
    // Unregister blockdata so that CPU can edit v-space to match requirements
-   //cudaHostUnregister(blockData);
+   //hipHostUnregister(blockData);
 
    // pointer to columns in memory
    Column *columns = host_columns[cuda_async_queue_id];
@@ -429,9 +429,9 @@ __host__ bool cuda_acc_map_1d(spatial_cell::SpatialCell* spatial_cell,
    size_t blockDataSize = blockContainer.size();
    size_t bdsw3 = blockDataSize * WID3;
    // Page lock (pin) again host memory for faster async transfers after kernel has run
-   //cudaHostRegister(blockData, bdsw3*sizeof(Realf),cudaHostRegisterDefault);
+   //hipHostRegister(blockData, bdsw3*sizeof(Realf),hipHostRegisterDefault);
    // Zero out target data on device
-   HANDLE_ERROR( cudaMemsetAsync(dev_blockData, 0, bdsw3*sizeof(Realf), stream) );
+   HANDLE_ERROR( hipMemsetAsync(dev_blockData, 0, bdsw3*sizeof(Realf), stream) );
 
    // Update value of cudaAllocationMultiplier if necessary
    float ratio1 = (blockDataSize / cuda_acc_allocatedSize);
@@ -464,13 +464,13 @@ __host__ bool cuda_acc_map_1d(spatial_cell::SpatialCell* spatial_cell,
       //cout << "]" << std::endl;
    }
 
-   // cudaEvent_t start, stop;
-   // cudaEventCreate(&start);
-   // cudaEventCreate(&stop);
-   // cudaEventRecord(start, 0);
+   // hipEvent_t start, stop;
+   // hipEventCreate(&start);
+   // hipEventCreate(&stop);
+   // hipEventRecord(start, 0);
 
    // Copy column information to device (async)
-   HANDLE_ERROR( cudaMemcpyAsync(dev_columns[cuda_async_queue_id], columns, totalColumns*sizeof(Column), cudaMemcpyHostToDevice, stream) );
+   HANDLE_ERROR( hipMemcpyAsync(dev_columns[cuda_async_queue_id], columns, totalColumns*sizeof(Column), hipMemcpyHostToDevice, stream) );
 
    // CALL CUDA FUNCTION WRAPPER/GLUE
    acceleration_1_glue(
@@ -495,19 +495,19 @@ __host__ bool cuda_acc_map_1d(spatial_cell::SpatialCell* spatial_cell,
 
    // Now done in subroutine called from cuda_acc_semilag.cpp
    // Copy data back to host
-   //cudaMemcpyAsync(blockData, dev_blockData[cuda_async_queue_id], bdsw3*sizeof(Realf), cudaMemcpyDeviceToHost, stream);
+   //hipMemcpyAsync(blockData, dev_blockData[cuda_async_queue_id], bdsw3*sizeof(Realf), hipMemcpyDeviceToHost, stream);
 
    // Now done in cuda_acc_semilag.cpp
-   //cudaStreamSynchronize(stream);
-   // cudaEventRecord(stop, stream);
-   // cudaEventSynchronize(stop);
+   //hipStreamSynchronize(stream);
+   // hipEventRecord(stop, stream);
+   // hipEventSynchronize(stop);
    // float elapsedTime;
-   // cudaEventElapsedTime(&elapsedTime, start, stop);
+   // hipEventElapsedTime(&elapsedTime, start, stop);
    //printf("%.3f ms\n", elapsedTime);
-   //cudaStreamDestroy(stream);
+   //hipStreamDestroy(stream);
 
    // Free page locks on host memory
-   //cudaHostUnregister(blockData);
+   //hipHostUnregister(blockData);
 
    delete[] GIDlist;
    delete[] LIDlist;

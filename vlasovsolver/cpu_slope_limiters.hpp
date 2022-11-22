@@ -25,9 +25,9 @@
 
 #include "vec.h"
 #include "cuda_header.h"
-#ifdef __CUDACC__
-#include "cuda.h"
-#include "cuda_runtime.h"
+#ifdef __HIPCC__
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 #include "device_launch_parameters.h"
 #endif
 

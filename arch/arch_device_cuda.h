@@ -1,11 +1,12 @@
+#include "hip/hip_runtime.h"
 
 #ifndef ARCH_DEVICE_CUDA_H
 #define ARCH_DEVICE_CUDA_H
 
 /* Include required headers */
-#include "cuda.h"
-#include "cuda_runtime.h"
-#include "cub/cub.cuh"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hipcub/hipcub.hpp"
 
 /* Define architecture-specific macros */
 #define ARCH_LOOP_LAMBDA [=] __host__ __device__
@@ -18,9 +19,9 @@
 
 /* Define the CUDA error checking macro */
 #define CUDA_ERR(err) (cuda_error(err, __FILE__, __LINE__))
-  inline static void cuda_error(cudaError_t err, const char *file, int line) {
-  	if (err != cudaSuccess) {
-  		printf("\n\n%s in %s at line %d\n", cudaGetErrorString(err), file, line);
+  inline static void cuda_error(hipError_t err, const char *file, int line) {
+  	if (err != hipSuccess) {
+  		printf("\n\n%s in %s at line %d\n", hipGetErrorString(err), file, line);
   		exit(1);
   	}
 }
@@ -51,26 +52,15 @@ namespace arch{
 /* Device function for memory allocation */
 __host__ __forceinline__ static void* allocate(size_t bytes) {
   void* ptr;
-  CUDA_ERR(cudaMallocManaged(&ptr, bytes));
+  CUDA_ERR(hipMallocManaged(&ptr, bytes));
   return ptr;
 }
 
 /* Device function for memory deallocation */
 __host__ __forceinline__ static void free(void* ptr) {
-  CUDA_ERR(cudaFree(ptr));
+  CUDA_ERR(hipFree(ptr));
 }
 
-/* A function to check and set the device mempool settings */
-__host__ __forceinline__ static void device_mempool_check(uint64_t threshold_new) {
-  int device_id;
-  CUDA_ERR(cudaGetDevice(&device_id));
-  cudaMemPool_t mempool;
-  CUDA_ERR(cudaDeviceGetDefaultMemPool(&mempool, device_id));
-  uint64_t threshold_old;
-  CUDA_ERR(cudaMemPoolGetAttribute(mempool, cudaMemPoolAttrReleaseThreshold, &threshold_old));
-  if(threshold_new != threshold_old)
-    CUDA_ERR(cudaMemPoolSetAttribute(mempool, cudaMemPoolAttrReleaseThreshold, &threshold_new));
-}
 
 /* Specializations for lambda calls depending on the templated dimension */
 template <typename Lambda, typename T>
@@ -109,7 +99,7 @@ __global__ static void __launch_bounds__(ARCH_BLOCKSIZE_R)
 reduction_kernel(Lambda loop_body, const T * __restrict__ init_val, T * __restrict__ rslt, const uint * __restrict__ lims, const uint n_total, const uint n_redu_dynamic, T *thread_data_dynamic)
 {
   /* Specialize BlockReduce for a 1D block of ARCH_BLOCKSIZE_R threads of type `T` */
-  typedef cub::BlockReduce<T, ARCH_BLOCKSIZE_R, cub::BLOCK_REDUCE_RAKING_COMMUTATIVE_ONLY, 1, 1> BlockReduce;
+  typedef hipcub::BlockReduce<T, ARCH_BLOCKSIZE_R, hipcub::BLOCK_REDUCE_RAKING_COMMUTATIVE_ONLY, 1, 1> BlockReduce;
 
   /* Dynamic shared memory declaration */
   extern __shared__ char temp_storage_dynamic[];
@@ -155,12 +145,12 @@ reduction_kernel(Lambda loop_body, const T * __restrict__ init_val, T * __restri
         atomicAdd(&rslt[i], aggregate);
     }
     else if(Op == reduce_op::max){
-      T aggregate = BlockReduce(temp_storage[i]).Reduce(thread_data[i], cub::Max()); 
+      T aggregate = BlockReduce(temp_storage[i]).Reduce(thread_data[i], hipcub::Max()); 
       if(threadIdx.x == 0) 
         atomicMax(&rslt[i], aggregate);
     }
     else if(Op == reduce_op::min){
-      T aggregate = BlockReduce(temp_storage[i]).Reduce(thread_data[i], cub::Min());
+      T aggregate = BlockReduce(temp_storage[i]).Reduce(thread_data[i], hipcub::Min());
       if(threadIdx.x == 0) 
         atomicMin(&rslt[i], aggregate);
     }
@@ -189,23 +179,20 @@ __forceinline__ static void parallel_reduce_driver(const uint (&limits)[NDim], L
   const uint blocksize = ARCH_BLOCKSIZE_R;
   const uint gridsize = (n_total - 1 + blocksize) / blocksize;
 
-  /* Check the CUDA default mempool settings and correct if wrong */
-  device_mempool_check(UINT64_MAX);
-
   /* Create a device buffer for the reduction results */
   T* d_buf;
-  CUDA_ERR(cudaMallocAsync(&d_buf, n_reductions*sizeof(T), 0));
-  CUDA_ERR(cudaMemcpy(d_buf, sum, n_reductions*sizeof(T), cudaMemcpyHostToDevice));
+  CUDA_ERR(cudaMalloc(&d_buf, n_reductions*sizeof(T)));
+  CUDA_ERR(hipMemcpy(d_buf, sum, n_reductions*sizeof(T), hipMemcpyHostToDevice));
   
   /* Create a device buffer to transfer the initial values to device */
   T* d_const_buf;
-  CUDA_ERR(cudaMallocAsync(&d_const_buf, n_reductions*sizeof(T), 0));
-  CUDA_ERR(cudaMemcpy(d_const_buf, d_buf, n_reductions*sizeof(T), cudaMemcpyDeviceToDevice));
+  CUDA_ERR(cudaMalloc(&d_const_buf, n_reductions*sizeof(T)));
+  CUDA_ERR(hipMemcpy(d_const_buf, d_buf, n_reductions*sizeof(T), hipMemcpyDeviceToDevice));
 
   /* Create a device buffer to transfer the loop limits of each dimension to device */
   uint* d_limits;
-  CUDA_ERR(cudaMallocAsync(&d_limits, NDim*sizeof(uint), 0));
-  CUDA_ERR(cudaMemcpy(d_limits, limits, NDim*sizeof(uint), cudaMemcpyHostToDevice));
+  CUDA_ERR(cudaMalloc(&d_limits, NDim*sizeof(uint)));
+  CUDA_ERR(hipMemcpy(d_limits, limits, NDim*sizeof(uint), hipMemcpyHostToDevice));
 
   /* Call the reduction kernel with different arguments depending 
    * on if the number of reductions is known at the compile time 
@@ -213,26 +200,26 @@ __forceinline__ static void parallel_reduce_driver(const uint (&limits)[NDim], L
   T* d_thread_data_dynamic;
   if(NReduStatic == 0) {
     /* Get the cub temp storage size for the dynamic shared memory kernel argument */
-    constexpr auto cub_temp_storage_type_size = sizeof(typename cub::BlockReduce<T, ARCH_BLOCKSIZE_R, cub::BLOCK_REDUCE_RAKING_COMMUTATIVE_ONLY, 1, 1>::TempStorage);
+    constexpr auto cub_temp_storage_type_size = sizeof(typename hipcub::BlockReduce<T, ARCH_BLOCKSIZE_R, hipcub::BLOCK_REDUCE_RAKING_COMMUTATIVE_ONLY, 1, 1>::TempStorage);
     /* Allocate memory for the thread data values */
-    CUDA_ERR(cudaMallocAsync(&d_thread_data_dynamic, n_reductions * blocksize * gridsize * sizeof(T), 0));
+    CUDA_ERR(cudaMalloc(&d_thread_data_dynamic, n_reductions * blocksize * gridsize * sizeof(T)));
     /* Call the kernel (the number of reductions not known at compile time) */
-    reduction_kernel<Op, NDim, 0><<<gridsize, blocksize, n_reductions * cub_temp_storage_type_size>>>(loop_body, d_const_buf, d_buf, d_limits, n_total, n_reductions, d_thread_data_dynamic);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(reduction_kernel<Op, NDim, 0>), gridsize, blocksize, n_reductions * cub_temp_storage_type_size, 0, loop_body, d_const_buf, d_buf, d_limits, n_total, n_reductions, d_thread_data_dynamic);
     /* Synchronize and free the thread data allocation */
-    CUDA_ERR(cudaStreamSynchronize(0));
-    CUDA_ERR(cudaFreeAsync(d_thread_data_dynamic, 0));
+    CUDA_ERR(hipStreamSynchronize(0));
+    CUDA_ERR(cudaFree(d_thread_data_dynamic));
   }
   else{
     /* Call the kernel (the number of reductions known at compile time) */
-    reduction_kernel<Op, NDim, NReduStatic><<<gridsize, blocksize>>>(loop_body, d_const_buf, d_buf, d_limits, n_total, n_reductions, d_thread_data_dynamic);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(reduction_kernel<Op, NDim, NReduStatic>), gridsize, blocksize, 0, 0, loop_body, d_const_buf, d_buf, d_limits, n_total, n_reductions, d_thread_data_dynamic);
     /* Synchronize after kernel call */
-    CUDA_ERR(cudaStreamSynchronize(0));
+    CUDA_ERR(hipStreamSynchronize(0));
   }
   /* Copy the results back to host and free the allocated memory back to pool*/
-  CUDA_ERR(cudaMemcpy(sum, d_buf, n_reductions*sizeof(T), cudaMemcpyDeviceToHost));
-  CUDA_ERR(cudaFreeAsync(d_buf, 0));
-  CUDA_ERR(cudaFreeAsync(d_const_buf, 0));
-  CUDA_ERR(cudaFreeAsync(d_limits, 0));
+  CUDA_ERR(hipMemcpy(sum, d_buf, n_reductions*sizeof(T), hipMemcpyDeviceToHost));
+  CUDA_ERR(cudaFree(d_buf));
+  CUDA_ERR(cudaFree(d_const_buf));
+  CUDA_ERR(cudaFree(d_limits));
 }
 }
 #endif // !ARCH_DEVICE_CUDA_H

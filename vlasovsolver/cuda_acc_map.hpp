@@ -27,8 +27,8 @@
 #include "../common.h"
 
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 
 //using namespace spatial_cell;
 
@@ -39,7 +39,7 @@ bool cuda_acc_map_1d(spatial_cell::SpatialCell* spatial_cell,
                      Realv intersection_dj,
                      Realv intersection_dk,
                      const uint dimension,
-                     cudaStream_t stream
+                     hipStream_t stream
    );
 
 #endif

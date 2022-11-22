@@ -26,7 +26,7 @@
 #include <random>
 #include "../definitions.h"
 #include "../spatial_cell.hpp"
-#ifndef __CUDACC__
+#ifndef __HIPCC__
 #include <dccrg.hpp>
 #include <dccrg_cartesian_geometry.hpp>
 #endif
@@ -49,7 +49,7 @@ namespace projects {
       /*! Initialize project. Can be used, e.g., to read in parameters from the input file. */
       virtual bool initialize();
       
-#ifndef __CUDACC__
+#ifndef __HIPCC__
       /*! Perform some operation at each time step in the main program loop. */
       virtual void hook(
          cuint& stage,
@@ -89,7 +89,7 @@ namespace projects {
          
       Real setVelocityBlock(spatial_cell::SpatialCell* cell,const vmesh::LocalID& blockLID,const uint popID) const;
 
-#ifndef __CUDACC__
+#ifndef __HIPCC__
       virtual bool refineSpatialCells( dccrg::Dccrg<spatial_cell::SpatialCell,dccrg::Cartesian_Geometry>& mpiGrid ) const;
 #endif      
 

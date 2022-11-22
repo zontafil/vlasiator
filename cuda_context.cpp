@@ -28,18 +28,18 @@
 #include "cuda_context.cuh"
 
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 
-//CUcontext cuda_acc_context;
-cudaStream_t cudaStreamList[MAXCPUTHREADS];
+//hipCtx_t cuda_acc_context;
+hipStream_t cudaStreamList[MAXCPUTHREADS];
 
 __host__ void cuda_set_device() {
 
    const uint maxThreads = omp_get_max_threads();
 
    int deviceCount;
-   cudaGetDeviceCount(&deviceCount);
+   hipGetDeviceCount(&deviceCount);
    printf("CUDA device count %d with %d threads/streams\n",deviceCount,maxThreads);
 
    // /* Create communicator with one rank per compute node */
@@ -61,34 +61,34 @@ __host__ void cuda_set_device() {
    if (gpuid >= deviceCount) {
       printf("Error, attempting to use CUDA device beyond available count!\n");
    }
-   cudaSetDevice(gpuid);
+   hipSetDevice(gpuid);
 
    // Pre-generate streams
    for (uint i=0; i<maxThreads; ++i) {
-      cudaStreamCreate(&(cudaStreamList[i]));
+      hipStreamCreate(&(cudaStreamList[i]));
    }
 
    // Using just a single context for whole MPI task
 
-   // CUdevice cuDevice;
-   // CUresult result;
-   // result = cuDeviceGet(&cuDevice,gpuid);
+   // hipDevice_t cuDevice;
+   // hipError_t result;
+   // result = hipDeviceGet(&cuDevice,gpuid);
    // printf("Active CUDA device %d\n",cuDevice);
-   // result = cuCtxCreate(&cuda_acc_context, 0,cuDevice);
+   // result = hipCtxCreate(&cuda_acc_context, 0,cuDevice);
    // printf("Created CUDA context %ld \n",cuda_acc_context);
 
    // Loop to create one CUDA context per thread
    // for (uint i=0; i<omp_get_max_threads(); ++i) {
-   //    result = cuCtxCreate(&cuda_thread_context[i], 0,cuDevice);
+   //    result = hipCtxCreate(&cuda_thread_context[i], 0,cuDevice);
    //    printf("Created CUDA context %d %d \n",i,cuda_thread_context[i]);
    // }
    // const uint cuda_async_queue_id = omp_get_thread_num();
-   // CUcontext cuContext;
-   //result = cuDeviceGet(&cuDevice,gpuid);
+   // hipCtx_t cuContext;
+   //result = hipDeviceGet(&cuDevice,gpuid);
    //checkError(result);
-   //result = cuCtxCreate(&cuContext, 0,cuDevice);
+   //result = hipCtxCreate(&cuContext, 0,cuDevice);
    //checkError(result);
-   // result = cuCtxCreate(&cuContext, CU_CTX_MAP_HOST|CU_CTX_BLOCKING_SYNC, cuDevice);
+   // result = hipCtxCreate(&cuContext, hipDeviceMapHost|hipDeviceScheduleBlockingSync, cuDevice);
    // checkError(result);
 }
 
@@ -96,7 +96,7 @@ __host__ void cuda_clear_device() {
    // Destroy streams
    const uint maxThreads = omp_get_max_threads();
    for (uint i=0; i<maxThreads; ++i) {
-      cudaStreamDestroy(cudaStreamList[i]);
+      hipStreamDestroy(cudaStreamList[i]);
    }
 }
 
@@ -105,16 +105,16 @@ __host__ void cudaAllocateBlockData(
    Real** dev_parameters,
    vmesh::LocalID blockCount
    ) {
-   HANDLE_ERROR( cudaMalloc((void**)dev_blockData, blockCount*WID3*sizeof(Realf)) );
-   HANDLE_ERROR( cudaMalloc((void**)dev_parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf)) );
+   HANDLE_ERROR( hipMalloc((void**)dev_blockData, blockCount*WID3*sizeof(Realf)) );
+   HANDLE_ERROR( hipMalloc((void**)dev_parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf)) );
 }
 
 __host__ void cudaDeallocateBlockData(
    Realf** dev_blockData,
    Real** dev_parameters
    ) {
-   HANDLE_ERROR( cudaFree(*dev_blockData) );
-   HANDLE_ERROR( cudaFree(*dev_parameters) );
+   HANDLE_ERROR( hipFree(*dev_blockData) );
+   HANDLE_ERROR( hipFree(*dev_parameters) );
 }
 
 __host__ void cuda_HtoD_BlockData(
@@ -124,7 +124,7 @@ __host__ void cuda_HtoD_BlockData(
    ) {
    const uint thread_id = omp_get_thread_num();
 
-   cudaMemcpyAsync(dev_blockData, blockData, blockCount*WID3*sizeof(Realf), cudaMemcpyHostToDevice, cudaStreamList[thread_id]);
+   hipMemcpyAsync(dev_blockData, blockData, blockCount*WID3*sizeof(Realf), hipMemcpyHostToDevice, cudaStreamList[thread_id]);
 }
 
 __host__ void cuda_DtoH_BlockData(
@@ -134,7 +134,7 @@ __host__ void cuda_DtoH_BlockData(
    ) {
    const uint thread_id = omp_get_thread_num();
 
-   cudaMemcpyAsync(blockData, dev_blockData, blockCount*WID3*sizeof(Realf), cudaMemcpyDeviceToHost, cudaStreamList[thread_id]);
+   hipMemcpyAsync(blockData, dev_blockData, blockCount*WID3*sizeof(Realf), hipMemcpyDeviceToHost, cudaStreamList[thread_id]);
 }
 
 __host__ void cuda_HtoD_BlockParameters(
@@ -144,7 +144,7 @@ __host__ void cuda_HtoD_BlockParameters(
    ) {
    const uint thread_id = omp_get_thread_num();
 
-   cudaMemcpyAsync(dev_parameters, parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf), cudaMemcpyHostToDevice, cudaStreamList[thread_id]);
+   hipMemcpyAsync(dev_parameters, parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf), hipMemcpyHostToDevice, cudaStreamList[thread_id]);
 }
 
 __host__ void cuda_DtoH_BlockParameters(
@@ -154,29 +154,29 @@ __host__ void cuda_DtoH_BlockParameters(
    ) {
    const uint thread_id = omp_get_thread_num();
 
-   cudaMemcpyAsync(parameters, dev_parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf), cudaMemcpyDeviceToHost, cudaStreamList[thread_id]);
+   hipMemcpyAsync(parameters, dev_parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf), hipMemcpyDeviceToHost, cudaStreamList[thread_id]);
 }
 
 __host__ void cuda_register_BlockData(
    Realf* blockData,
    uint blockCount
    ) {
-   cudaHostRegister(blockData, blockCount*WID3*sizeof(Realf),cudaHostRegisterDefault);
+   hipHostRegister(blockData, blockCount*WID3*sizeof(Realf),hipHostRegisterDefault);
 }
 __host__ void cuda_register_BlockParameters(
    Real* parameters,
    uint blockCount
    ) {
-   cudaHostRegister(parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf),cudaHostRegisterDefault);
+   hipHostRegister(parameters, blockCount*BlockParams::N_VELOCITY_BLOCK_PARAMS*sizeof(Realf),hipHostRegisterDefault);
 }
 
 __host__ void cuda_unregister_BlockData(
    Realf* blockData
    ) {
-   cudaHostUnregister(blockData);
+   hipHostUnregister(blockData);
 }
 __host__ void cuda_unregister_BlockParameters(
    Real* parameters
    ) {
-   cudaHostUnregister(parameters);
+   hipHostUnregister(parameters);
 }

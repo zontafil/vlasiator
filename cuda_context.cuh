@@ -24,18 +24,18 @@
 #define CUDA_CONTEXT_H
 
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 #include "definitions.h"
 
 #include <stdio.h>
 
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ));
-static void HandleError( cudaError_t err, const char *file, int line )
+static void HandleError( hipError_t err, const char *file, int line )
 {
-    if (err != cudaSuccess)
+    if (err != hipSuccess)
     {
-        printf( "%s in %s at line %d\n", cudaGetErrorString( err ), file, line );
+        printf( "%s in %s at line %d\n", hipGetErrorString( err ), file, line );
         exit( EXIT_FAILURE );
     }
 }
@@ -101,8 +101,8 @@ void cuda_unregister_BlockParameters(
 
 #define MAXCPUTHREADS 64
 
-//extern CUcontext cuda_acc_context;
-extern cudaStream_t cudaStreamList[];
-extern cudaStream_t cudaBaseStream;
+//extern hipCtx_t cuda_acc_context;
+extern hipStream_t cudaStreamList[];
+extern hipStream_t cudaBaseStream;
 
 #endif

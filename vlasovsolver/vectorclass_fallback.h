@@ -24,10 +24,10 @@
 
 #include "cuda_header.h" // For CUDA_HOSTDEV and CUDA_DEV
 
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 #include "device_launch_parameters.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 #endif
 
 #include <stdio.h>

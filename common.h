@@ -419,7 +419,7 @@ const int WID3 = WID2*WID; /*!< Number of cells in a velocity block. */
 /*!
 Get the cellindex in the velocity space block
 */
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 #define CUDA_HOSTDEV __host__ __device__
 #else
 #define CUDA_HOSTDEV

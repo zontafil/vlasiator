@@ -30,9 +30,9 @@
 #include "cpu_slope_limiters.hpp"
 
 #include "cuda_header.h"
-#ifdef __CUDACC__
-#include "cuda.h"
-#include "cuda_runtime.h"
+#ifdef __HIPCC__
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 #endif
 
 /*enum for setting face value and derivative estimates. Implicit ones
