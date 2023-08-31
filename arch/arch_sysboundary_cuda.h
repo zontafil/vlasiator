@@ -37,7 +37,21 @@ class buf<SysBoundary> {
 
         class Proxy {
             public:
-                ARCH_HOSTDEV Proxy(int _sysBoundaryFlag, const buf<SysBoundary>* _ptr) : sysBoundaryFlag(_sysBoundaryFlag), bufPtr(_ptr) {}
+                ARCH_HOSTDEV Proxy(int _sysBoundaryFlag, const buf<SysBoundary>* _ptr) : sysBoundaryFlag(_sysBoundaryFlag), bufPtr(_ptr) {
+                    #ifdef __CUDA_ARCH__
+                        setbyUser = bufPtr->setByUser_d;
+                        ionosphere = bufPtr->ionosphere_d;
+                        outflow = bufPtr->outflow_d;
+                        conductingsphere = bufPtr->conductingsphere_d;
+                        doNotCompute = bufPtr->doNotCompute_d;
+                    #else
+                        setbyUser = bufPtr->setbyUser;
+                        ionosphere = bufPtr->ionosphere;
+                        outflow = bufPtr->outflow;
+                        conductingsphere = bufPtr->conductingsphere;
+                        doNotCompute = bufPtr->doNotCompute;
+                    #endif
+                }
 
                 ARCH_HOSTDEV Real fieldSolverBoundaryCondMagneticField(
                     const buf<FsGrid<Real, fsgrids::bfield::N_BFIELD, FS_STENCIL_WIDTH>> & bGrid,
@@ -49,29 +63,13 @@ class buf<SysBoundary> {
                     cuint& component
                 ) {
                     if (sysBoundaryFlag == sysboundarytype::SET_MAXWELLIAN) {
-                        #ifdef __CUDA_ARCH__
-                            return bufPtr->setByUser_d->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt,component);
-                        #else
-                            return bufPtr->setbyUser->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt,component);
-                        #endif
+                        return setbyUser->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt,component);
                     } else if (sysBoundaryFlag == sysboundarytype::IONOSPHERE) {
-                        #ifdef __CUDA_ARCH__
-                            return bufPtr->ionosphere_d->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
-                        #else
-                            return bufPtr->ionosphere->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
-                        #endif
+                        return ionosphere->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
                     } else if (sysBoundaryFlag == sysboundarytype::CONDUCTINGSPHERE) {
-                        #ifdef __CUDA_ARCH__
-                            return bufPtr->conductingsphere_d->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
-                        #else
-                            return bufPtr->conductingsphere->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
-                        #endif
+                        return conductingsphere->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
                     } else if (sysBoundaryFlag == sysboundarytype::OUTFLOW) {
-                        #ifdef __CUDA_ARCH__
-                            return bufPtr->outflow_d->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
-                        #else
-                            return bufPtr->outflow->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
-                        #endif
+                        return outflow->fieldSolverBoundaryCondMagneticField(bGrid, technicalGrid, i, j, k, dt, component);
                     } else {
                         #ifndef __CUDA_ARCH__
                             std::cerr << "ERROR: sysboundarytype not found bound cuda" << std::endl;
@@ -321,6 +319,12 @@ class buf<SysBoundary> {
                 int sysBoundaryFlag;
                 const buf<SysBoundary>* bufPtr;
 
+                // list of possible sysboundaries
+                SBC::SetByUserFieldBoundary* setbyUser = NULL;
+                SBC::IonosphereFieldBoundary* ionosphere = NULL;
+                SBC::OutflowFieldBoundary* outflow = NULL;
+                SBC::ConductingSphereFieldBoundary* conductingsphere = NULL; 
+                SBC::DoNotCompute* doNotCompute;
         };
 
         // sync the data from the host to the device
