@@ -195,7 +195,7 @@ namespace arch{
   class buf<FsGrid<T, TDim, N>> {
     private:  
     T *h_data; 
-    T *d_data;
+     //T *d_data;
     FsGrid<T, TDim, N> *h_ptr;
     FsGrid<T, TDim, N> *d_ptr;
     uint dataSize;
@@ -206,37 +206,57 @@ namespace arch{
 
      // Metadata is never edited on-device, so only actual data is synced.
     void syncDeviceData(void){
-      CHK_ERR(cudaMemcpy(d_data, h_data, dataSize, cudaMemcpyHostToDevice));
+       //CHK_ERR(cudaMemcpy(d_data, h_data, dataSize, cudaMemcpyHostToDevice));
+       int device;
+       cudaGetDevice(&device);
+#ifdef _OPENMP
+   const uint thread_id = omp_get_thread_num();
+#else
+   const uint thread_id = 0;
+#endif
+       cudaStream_t stream =  gpuStreamList[thread_id];
+       CHK_ERR(cudaMemPrefetchAsync(h_data,dataSize,device,stream));
+       CHK_ERR(cudaStreamSynchronize(stream));
     }
 
     void syncHostData(void){
-      CHK_ERR(cudaMemcpy(h_data, d_data, dataSize, cudaMemcpyDeviceToHost));
-    }
+       //CHK_ERR(cudaMemcpy(h_data, d_data, dataSize, cudaMemcpyDeviceToHost));
+#ifdef _OPENMP
+   const uint thread_id = omp_get_thread_num();
+#else
+   const uint thread_id = 0;
+#endif
+       cudaStream_t stream =  gpuStreamList[thread_id];
+       cudaMemPrefetchAsync(h_data,dataSize,cudaCpuDeviceId,stream);
+     }
     
      buf(FsGrid<T, TDim, N> * const _ptr) : h_ptr(_ptr) {
       int32_t *storageSize = _ptr->getStorageSize();
       dataSize = storageSize[0] * storageSize[1] * storageSize[2] * TDim * sizeof(T);
       h_data = &_ptr->getData();
       CHK_ERR(cudaMalloc(&d_ptr, sizeof(FsGrid<T, TDim, N>)));
-      CHK_ERR(cudaMalloc(&d_data, dataSize));
+      // CHK_ERR(cudaMalloc(&d_data, dataSize));
       // Make the device copy of the FSgrid object point to the correct memory
-      FsGrid<T, TDim, N> *tmp_ptr;
-      tmp_ptr = (FsGrid<T, TDim, N>*) malloc(sizeof(FsGrid<T, TDim, N>));
-      memcpy(tmp_ptr, _ptr, sizeof(FsGrid<T, TDim, N>));
-      tmp_ptr->setData(d_data);
-      CHK_ERR(cudaMemcpy(d_ptr, tmp_ptr, sizeof(FsGrid<T, TDim, N>), cudaMemcpyHostToDevice));
-      syncDeviceData();
-      free(tmp_ptr);
+      // FsGrid<T, TDim, N> *tmp_ptr;
+      // tmp_ptr = (FsGrid<T, TDim, N>*) malloc(sizeof(FsGrid<T, TDim, N>));
+      // memcpy(tmp_ptr, _ptr, sizeof(FsGrid<T, TDim, N>));
+      //tmp_ptr->setData(d_data);
+      //CHK_ERR(cudaMemcpy(d_ptr, tmp_ptr, sizeof(FsGrid<T, TDim, N>), cudaMemcpyHostToDevice));
+      CHK_ERR(cudaMemcpy(d_ptr, h_ptr, sizeof(FsGrid<T, TDim, N>), cudaMemcpyHostToDevice));
+      syncHostData();
+      //syncDeviceData();
+      //free(tmp_ptr);
     }
     
     __host__ __device__ buf(const buf& u) : 
-       h_ptr(u.h_ptr), d_ptr(u.d_ptr), h_data(u.h_data), d_data(u.d_data), dataSize(u.dataSize), is_copy(1), thread_id(u.thread_id) {}
+       //h_ptr(u.h_ptr), d_ptr(u.d_ptr), h_data(u.h_data), d_data(u.d_data), dataSize(u.dataSize), is_copy(1), thread_id(u.thread_id) {}
+       h_ptr(u.h_ptr), d_ptr(u.d_ptr), h_data(u.h_data), dataSize(u.dataSize), is_copy(1), thread_id(u.thread_id) {}
 
     __host__ __device__ ~buf(void){
       if(!is_copy){
         #ifndef __CUDA_ARCH__
           syncHostData();
-          CHK_ERR(cudaFree(d_data));
+          //CHK_ERR(cudaFree(d_data));
           CHK_ERR(cudaFree(d_ptr));
         #endif
       }
